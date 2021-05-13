@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.httpclient">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="Brew It"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:roundIcon="@drawable/beer_hop"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.HTTPClient">
+        <activity android:name=".Activities.BrewingSettingsActivity"></activity>
+        <activity android:name=".Activities.ConnectToDeviceWifiActivity" />
+        <activity android:name=".Activities.BrewingActivity"
+            android:launchMode="singleTask"/>
+        <activity android:name=".Activities.SettingsActivity" />
+        <activity android:name=".Activities.MainMenuActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".Activities.DeviceIpActivity" />
+        <activity android:name=".Activities.DeviceSettingActivity" />
+
+        <service android:name=".services.SampleService" />
+        <service android:name=".services.BrewingService"/>
+
+        <activity android:name=".Activities.MainActivity" />
+    </application>
+
+</manifest>

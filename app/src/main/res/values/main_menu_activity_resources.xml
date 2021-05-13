@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="MMA_DISCONNECTED">Disconnected</string>
+    <string name="MMA_CHECKING_DEVICE_STATUS">Checking device status\nPlease wait…</string>
+    <string name="MMA_CONNECTING">Connecting…</string>
+    <string name="MMA_DEVICE_DISCONNECTED_INFO">Looks like your device is disconnected.
+        \nMake sure you are connected to the same WiFi network or configure your device by clicking on \'CONFIGURE NOW\' button below.
+        \n\nYou can also start brewing without it by clicking \'START BREWING\' button.</string>
+    <string name="MMA_CONNECTED">"Connected"</string>
+    <string name="MMA_START_BREWING">Start brewing your own beer by clicking \'START BREWING\' button below.</string>
+</resources>
