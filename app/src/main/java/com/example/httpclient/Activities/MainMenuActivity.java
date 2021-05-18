@@ -131,7 +131,9 @@ public class MainMenuActivity extends AppCompatActivity implements Observer {
             configureNowButton.setVisibility(View.VISIBLE);
         }
         else{
-            deviceStatusTV.setText(getResources().getString(R.string.MMA_CONNECTED));
+            updateDeviceControlView(
+                    getResources().getString(R.string.MMA_CONNECTED),
+                    R.drawable.temperature_icon_green);
             infoTV.setText(getResources().getString(R.string.MMA_START_BREWING));
             configureNowButton.setVisibility(View.INVISIBLE);
         }

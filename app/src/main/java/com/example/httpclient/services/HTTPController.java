@@ -17,11 +17,19 @@ public class HTTPController {
     private String httpResponse = "";
     OnHttpResponseListener onHttpResponseListener;
 
+    public static final String DEVICE_IP = "192.168.4.1";
+
     public static final String ERROR_RESPONSE = "Cannot access the Device!\nMake sure device is connected and IP is set correctly.";
+
+    public static final String SEND_HELLO = "/hello";
+    public static final String RECEIVE_HELLO = "HELLO";
 
     public HTTPController(Context context, String url) {
         this.queue = Volley.newRequestQueue(context);
-        this.requestUrl = url;
+        if (url != null){
+            this.requestUrl = url;
+        }
+        else requestUrl = DEVICE_IP;
     }
 
     public void sendRequest(String request){

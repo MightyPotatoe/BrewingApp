@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="DIA_connecting">Connecting to the device…</string>
+    <string name="DIA_please_wait">Please Wait.</string>
+    <string name="DIA_retry">Retry</string>
+    <string name="DIA_connection_failed">Connection failed!</string>
+    <string name="DIA_connection_failed_details">Please make sure you are connected to BrewIT_AP access point and try again.</string>
+    <string name="DIA_connected">Connected!</string>
+
+</resources>

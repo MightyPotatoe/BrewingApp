@@ -3,9 +3,6 @@
     <string name="channel_name">channelName</string>
     <string name="channel_description">description</string>
     <string name="podaj_dane_wifi">Please enter your WiFi network credentials.</string>
-    <string name="wpisz_IP">Please enter your device IP address</string>
-    <string name="polacz">Connect</string>
-    <string name="where_is_my_ip">You can find your device IP address on the back of the cover</string>
     <string name="ip_address">IP address</string>
     <string name="error_place_holder">Błąd! Upewnij się, że jesteś podpięty do sieci WI-FI urządzenia, i sprawdź ponownie adres IP</string>
     <string name="warining_wifi24">Warning! This device works only with 2.4GHz WiFi networks.</string>

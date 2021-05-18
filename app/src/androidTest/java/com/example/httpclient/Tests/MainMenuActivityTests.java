@@ -1,4 +1,4 @@
-package com.example.httpclient;
+package com.example.httpclient.Tests;
 
 import android.content.Context;
 import android.widget.Button;
@@ -9,6 +9,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.rule.ActivityTestRule;
 
 import com.example.httpclient.Activities.MainMenuActivity;
+import com.example.httpclient.R;
+import com.example.httpclient.Wait;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -20,7 +22,7 @@ import static org.junit.Assert.*;
 
 
 @RunWith(AndroidJUnit4.class)
-public class ExampleInstrumentedTest {
+public class MainMenuActivityTests {
 
     @Rule
     public ActivityTestRule<MainMenuActivity> mainActivityActivityTestRule = new ActivityTestRule<>(MainMenuActivity.class);
@@ -52,4 +54,5 @@ public class ExampleInstrumentedTest {
         Wait.untilTextViewContentIsChanged(connectingMessage, mainMenuActivity.getResources().getString(R.string.MMA_CONNECTING), 10);
         Assert.assertTrue(startBrewing.isEnabled());
     }
+
 }

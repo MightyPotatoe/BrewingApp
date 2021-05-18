@@ -35,7 +35,7 @@ public class DeviceSettingActivity extends AppCompatActivity implements HTTPCont
         super.onCreate(savedInstanceState);
 
         sharedPreferences = getSharedPreferences("WIFI_PREF", Context.MODE_PRIVATE);
-        String ip = sharedPreferences.getString("IP", "0.0.0.0");
+        String ip = sharedPreferences.getString("IP", null);
         httpController = new HTTPController(this, ip);
         httpController.setHttpResponseListener(this);
 

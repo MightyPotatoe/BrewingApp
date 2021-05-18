@@ -2,101 +2,76 @@ package com.example.httpclient.Activities;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.content.Context;
+import android.app.Activity;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
 import com.example.httpclient.R;
-import com.example.httpclient.Utilities.IpChecker;
 import com.example.httpclient.services.HTTPController;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
-import com.google.android.material.textfield.TextInputEditText;
 
 public class DeviceIpActivity extends AppCompatActivity implements HTTPController.OnHttpResponseListener {
 
-    TextInputEditText ipBox;
-    TextView errorTV;
+    TextView headerTV;
+    TextView captionTV;
     CircularProgressIndicator progressIndicator;
-    HTTPController httpController;
-    SharedPreferences sharedPreferences;
     Button button;
+
+    HTTPController httpController;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_device_ip);
-        button = findViewById(R.id.connectBUtton);
-        ipBox = findViewById(R.id.IP_TE);
-        errorTV = findViewById(R.id.error_TV);
-        progressIndicator = findViewById(R.id.progressCircleDeterminate);
-        sharedPreferences = getSharedPreferences("WIFI_PREF", Context.MODE_PRIVATE);
+        button = findViewById(R.id.DAI_refresh);
+        headerTV = findViewById(R.id.DAI_header);
+        captionTV = findViewById(R.id.DAI_caption);
+        progressIndicator = findViewById(R.id.DAI_progressIndicator);
 
-        //--Default State
-        ui_inputsEnabled(true);
-        progressIndicator.setVisibility(View.INVISIBLE);
-        errorTV.setVisibility(View.INVISIBLE);
-
+        //Connecting view
+        loadConnectingView();
     }
 
     public void onConnectButtonClick(View view) {
-
-        progressIndicator.setVisibility(View.VISIBLE);
-        button.setEnabled(false);
-
-        String ipAddress = ipBox.getText().toString();
-        if(!IpChecker.isIp(ipAddress)){
-            ui_showError("Please provide correct IP address", R.color.red);
-        }
-        else {
-            //updating view
-            ui_loading();
-            //sending request to device
-            httpController = new HTTPController(this, ipAddress);
-            httpController.setHttpResponseListener(this);
-            httpController.sendRequest("/hello");
-        }
-
+        loadConnectingView();
     }
 
     @Override
     public void onResponseReceived(String response) {
-        if(response.contains("HELLO")){
-            //updating view
-            ui_showError("Connected!", R.color.green);
-            ipBox.setEnabled(false);
-            //storing device ID in sharedPreferences
-            SharedPreferences.Editor editor = sharedPreferences.edit();
-            editor.putString("IP", ipBox.getText().toString());
-            editor.commit();
+        if(response.contains(HTTPController.RECEIVE_HELLO)){
+            captionTV.setText(R.string.DIA_connected);
             //starting new Activity
             Intent intent = new Intent(this, DeviceSettingActivity.class);
             startActivity(intent);
         }
         else {
-            ui_showError(response, R.color.red);
+            loadConnectionFailedView();
         }
     }
 
-    private void ui_showError(String errorMessage, int colorId){
-        progressIndicator.setVisibility(View.INVISIBLE);
-        errorTV.setVisibility(View.VISIBLE);
-        errorTV.setTextColor(getColor(colorId));
-        errorTV.setText(errorMessage);
-        ui_inputsEnabled(true);
-    }
 
-    private void ui_loading(){
-        errorTV.setVisibility(View.INVISIBLE);
+    //-------------------CONNECTING VIEW------------------------------------------------------------
+    private void loadConnectingView(){
+        headerTV.setText(R.string.DIA_connecting);
+        captionTV.setText(R.string.DIA_please_wait);
         progressIndicator.setVisibility(View.VISIBLE);
-        ui_inputsEnabled(false);
+        button.setVisibility(View.INVISIBLE);
+
+        //Connect to httpController
+        httpController = new HTTPController(this,null);
+        httpController.setHttpResponseListener(this);
+        httpController.sendRequest(HTTPController.SEND_HELLO);
     }
 
-    private void ui_inputsEnabled(boolean isEnabled){
-        ipBox.setEnabled(isEnabled);
-        button.setEnabled(isEnabled);
+    //-------------------CONNECTION FAILED VIEW-----------------------------------------------------
+    private void loadConnectionFailedView(){
+        headerTV.setText(R.string.DIA_connection_failed);
+        captionTV.setText(R.string.DIA_connection_failed_details);
+        progressIndicator.setVisibility(View.INVISIBLE);
+        button.setVisibility(View.VISIBLE);
     }
 }
