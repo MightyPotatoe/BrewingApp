@@ -338,7 +338,7 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
         int sec = timeRemain%60;
         remainingTimeTV.setText(min + " min " + sec + " sec");
         timeProgressBar.setMax(currentStepTime);
-        timeProgressBar.setProgress(currentStepTime - timeRemain);
+        timeProgressBar.setProgress(timeRemain);
     }
 
     //-----------------------------------------------------
