@@ -24,6 +24,7 @@ import com.example.httpclient.R;
 import com.example.httpclient.Threads.MeasureThread;
 import com.example.httpclient.Utilities.SharedPreferencesEditor;
 import com.example.httpclient.services.BrewingService;
+import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
 
 public class BrewingActivity extends AppCompatActivity implements Observer {
@@ -53,7 +54,7 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
     TextView statusHintTV;
     TextView nextStepLabel;
     CircularProgressIndicator timeProgressBar;
-    Button actionButton;
+    MaterialCheckBox doNotUseThermometerCheckbox;
 
     //Variable for device response
     String deviceResponse = "Disconnected";
@@ -89,28 +90,29 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
         measureThread.attach(this);
         measureThread.start();
 
-        //Temperature Card
+        //Temperature section
         blueBar = findViewById(R.id.blueBar);
         lightBlueBar = findViewById(R.id.lightBlueBar);
         greenBar = findViewById(R.id.greenbar);
         orangeBar = findViewById(R.id.orangeBar);
         redBar = findViewById(R.id.redBar);
 
-        //Current StepCard
+        //Current Section
         currentStepTempTV = findViewById(R.id.currentStepTemp);
         currentStepTimeTv = findViewById(R.id.currentStepTimeTV);
 
-        //TimeRemainingCard
+        //TimeRemaining Section
         remainingTimeTV = findViewById(R.id.remainingTimeTV);
         timeProgressBar = findViewById(R.id.progressIndicator);
 
-        //NextStepsCard
+        //Next Steps Section
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(getApplicationContext()));
         recyclerView.setAdapter(brewingStepsAdapter);
 
-        //actionButton
-        actionButton = findViewById(R.id.actionButton);
+        //Do not use thermometer checkbox
+        doNotUseThermometerCheckbox = findViewById(R.id.doNotUseThermometerCheckbox);
+        doNotUseThermometerCheckbox.setEnabled(false);
 
         //statusCard
         statusTV = findViewById(R.id.statusTV);
@@ -317,7 +319,7 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
     }
 
     public void updateButton(String text){
-        actionButton.setText(text);
+//        actionButton.setText(text);
     }
 
     public void updateCurrentStepCard(){
