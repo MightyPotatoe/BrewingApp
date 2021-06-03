@@ -17,12 +17,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.httpclient.Adapters.MyRecyclerViewAdapter;
+import com.example.httpclient.DataBase.AppDatabase;
+import com.example.httpclient.DataBase.LastUsedBrewingSteps;
 import com.example.httpclient.Dialogs.BrewingParametersDialog;
 import com.example.httpclient.R;
 import com.example.httpclient.Utilities.IpDetector;
 import com.google.android.material.button.MaterialButton;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class BrewingSettingsActivity extends AppCompatActivity implements MyRecyclerViewAdapter.ItemClickListener, BrewingParametersDialog.DialogListener {
 
@@ -50,18 +53,8 @@ public class BrewingSettingsActivity extends AppCompatActivity implements MyRecy
         sharedPreferences = getSharedPreferences("BREWING_SETTINGS", Context.MODE_PRIVATE);
 
         //Initializing RecyclerView with previous brewing steps
-        ArrayList<Integer> tempList = new ArrayList<>();
-        ArrayList<Integer> timeList = new ArrayList<>();
-        for(int i = 0; i<5; i++){
-            int temp = sharedPreferences.getInt("Temp"+i, 0);
-            int time = sharedPreferences.getInt("Time"+i, 0);
-            if(temp!=0 && time !=0){
-                tempList.add(temp);
-                timeList.add(time);
-            }
-        }
-
-        adapter = new MyRecyclerViewAdapter(this, tempList, timeList);
+        final AppDatabase db = AppDatabase.getInstance(this);
+        adapter = new MyRecyclerViewAdapter(this, new ArrayList<>(db.getAllStepsTemps()), new ArrayList<>(db.getAllStepsTimes()));
         adapter.setClickListener(this);
         recyclerView.setAdapter(adapter);
 
@@ -128,20 +121,31 @@ public class BrewingSettingsActivity extends AppCompatActivity implements MyRecy
         ArrayList<Integer> tempList = adapter.getDesiredTempList();
         ArrayList<Integer> timeList = adapter.getTimeForStepList();
 
-        for(int i = 0; i < 5 ; i++){
-            SharedPreferences.Editor editor = sharedPreferences.edit();
-            String timeKey = "Time" + i;
-            String tempKey = "Temp" + i;
-            if(i < tempList.size()){
-                editor.putInt(timeKey, timeList.get(i));
-                editor.putInt(tempKey, tempList.get(i));
-            }
-            else{
-                editor.putInt(timeKey, 0);
-                editor.putInt(tempKey, 0);
-            }
-            editor.commit();
+//        for(int i = 0; i < 5 ; i++){
+//            SharedPreferences.Editor editor = sharedPreferences.edit();
+//            String timeKey = "Time" + i;
+//            String tempKey = "Temp" + i;
+//            if(i < tempList.size()){
+//                editor.putInt(timeKey, timeList.get(i));
+//                editor.putInt(tempKey, tempList.get(i));
+//            }
+//            else{
+//                editor.putInt(timeKey, 0);
+//                editor.putInt(tempKey, 0);
+//            }
+//            editor.commit();
+//        }
+
+
+        final AppDatabase db = AppDatabase.getInstance(this);
+        db.clearLastBrewingStepDB();
+
+        for(int i = 0; i < tempList.size() ; i++){
+            LastUsedBrewingSteps lastUsedBrewingSteps = new LastUsedBrewingSteps(i+1, timeList.get(i), tempList.get(i));
+            db.insertStepToLastBrewingStepsDb(lastUsedBrewingSteps);
         }
+
+
     }
 
     @Override

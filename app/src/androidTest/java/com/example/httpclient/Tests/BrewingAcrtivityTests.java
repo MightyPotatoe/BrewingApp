@@ -39,16 +39,7 @@ public class BrewingAcrtivityTests {
 
     @Rule
     public ActivityTestRule<MainMenuActivity> mainActivityActivityTestRule = new ActivityTestRule<>(MainMenuActivity.class);
-    public ActivityTestRule<BrewingActivity> brewingActivityTestRule = new ActivityTestRule<>(BrewingActivity.class);
 
-    private MainMenuActivity mainMenuActivity = null;
-    private BrewingActivity brewingActivity = null;
-
-    @Before
-    public void setUp() throws Exception{
-//        mainMenuActivity = mainActivityActivityTestRule.getActivity();
-//        brewingActivity = brewingActivityTestRule.getActivity();
-    }
 
     //@BREW-TC-3
     @Test
