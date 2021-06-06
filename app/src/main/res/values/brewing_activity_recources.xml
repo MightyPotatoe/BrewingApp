@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="BA_WaitingForTemperature">Waiting for reaching correct temperature</string>
+    <string name="BA_DeviceDisconnected">Your device seems to be disconnected</string>
+    <string name="BA_WaitingForTemperatureHint">You will receive the notification and timer will start automatically when your wort reaches desired temperature.</string>
+    <string name="BA_BrewingInProgress">Your brewing is in progress…</string>
+    <string name="BA_BrewingInProgressHint">Remember to stir your wort from time to time.</string>
+</resources>

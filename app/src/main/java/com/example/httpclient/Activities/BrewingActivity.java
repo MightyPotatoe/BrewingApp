@@ -13,12 +13,14 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.PowerManager;
+import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.example.httpclient.Adapters.BrewingStepsAdapter;
+import com.example.httpclient.DataBase.AppDatabase;
+import com.example.httpclient.DataBase.Dictionary;
 import com.example.httpclient.Observer.Observer;
 import com.example.httpclient.R;
 import com.example.httpclient.Threads.MeasureThread;
@@ -29,9 +31,12 @@ import com.google.android.material.progressindicator.CircularProgressIndicator;
 
 public class BrewingActivity extends AppCompatActivity implements Observer {
 
-    private final String STATUS_INACTIVE = "INACTIVE";
-    private final String STATUS_ACTIVE = "ACTIVE";
-    private final String STATUS_WARNING = "WARNING";
+    private final int COLOR_BAR_NONE = 0;
+    private final int COLOR_BAR_DARK_BLUE = 1;
+    private final int COLOR_BAR_LIGHT_BLUE = 2;
+    private final int COLOR_BAR_GREEN = 3;
+    private final int COLOR_BAR_ORANGE = 4;
+    private final int COLOR_BAR_RED = 5;
 
     //Shared Preferences
     SharedPreferences wiFiSharedPreferences;
@@ -61,6 +66,7 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
     //Brewing Service
     Intent brewingServiceIntent;
 
+    //PowerManager
     PowerManager mgr;
     PowerManager.WakeLock wakeLock;
 
@@ -68,14 +74,17 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_brewing);
+
+        final AppDatabase db = AppDatabase.getInstance(this);
+        db.setApplicationStatus(Dictionary.STATUS_PENDING);
+
         brewingServiceIntent = new Intent(this, BrewingService.class);
 
         //Connecting to SharedPreferences
         wiFiSharedPreferences = getSharedPreferences("WIFI_PREF", Context.MODE_PRIVATE);
-        brewingSharedPreferencesEditor = new SharedPreferencesEditor(getSharedPreferences("BREWING_SETTINGS", Context.MODE_PRIVATE));
 
         //Initializing Brewing Steps Adapter
-        brewingStepsAdapter = new BrewingStepsAdapter(this, brewingSharedPreferencesEditor);
+        brewingStepsAdapter = new BrewingStepsAdapter(this);
 
         //Registering Broadcast Receiver for BrewingServiceMessages
         registerReceiver(broadcastReceiver, new IntentFilter(BrewingService.TIMER_ACTION)); //<----Register
@@ -97,7 +106,7 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
         orangeBar = findViewById(R.id.orangeBar);
         redBar = findViewById(R.id.redBar);
 
-        //Current Section
+        //Current Step Section
         currentStepTempTV = findViewById(R.id.currentStepTemp);
         currentStepTimeTv = findViewById(R.id.currentStepTimeTV);
 
@@ -121,20 +130,23 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
         //NextStepLabel
         nextStepLabel = findViewById(R.id.nextStepLabel);
 
-        callDefaultSettings();
-
+        //Setting up power management
         mgr = (PowerManager)this.getSystemService(Context.POWER_SERVICE);
         wakeLock = mgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "myapp:mywakelog");
         wakeLock.acquire(120*60*1000L /*120 minutes*/);
+
+
+        //Calling default settings
+        callDefaultSettings();
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        registerReceiver(broadcastReceiver, new IntentFilter(BrewingService.TIMER_ACTION)); //<----Register broadcast receiver
-        //Updating view to current status
-        updateStatus();
-    }
+//    @Override
+//    protected void onResume() {
+//        super.onResume();
+//        registerReceiver(broadcastReceiver, new IntentFilter(BrewingService.TIMER_ACTION)); //<----Register broadcast receiver
+//        //Updating view to current status
+//        manageActivityStatus();
+//    }
 
     @Override
     protected void onStop() {
@@ -149,22 +161,26 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
         wakeLock.release();
     }
 
+    /**
+     * Updating temperature section on device response received
+     * @param response - response from device
+     */
     @Override
-    public void update(String param) {
+    public void update(String response) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 int softBias = 2;
                 int strongBias = 5;
-                deviceResponse = param;
+                deviceResponse = response;
                 //Device not connected
-                if(param.equals("Disconnected") || param.equals("-")){
+                if(response.equals("Disconnected") || response.equals("-")){
                     tempTV.setTextColor(getColor(R.color.red));
                     setProgressOnColorBar(0);
                 }
                 else{
                     tempTV.setTextColor(getColor(R.color.black));
-                    double currentTemp = Double.parseDouble(param.replaceAll("[^0-9.]",""));
+                    double currentTemp = Double.parseDouble(response.replaceAll("[^0-9.]",""));
                     int desiredTemp = brewingStepsAdapter.getCurrentStepTemperature();
                     double deltaT = currentTemp - desiredTemp;
                     if(deltaT >= strongBias ) {
@@ -183,152 +199,88 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
                         setProgressOnColorBar(3);
                     }
                 }
-                tempTV.setText(param);
-                updateStatus();
+                tempTV.setText(response);
+                updateView();
             }
         });
     }
 
-    public void onActionButtonClick(View view) {
-        String status = brewingSharedPreferencesEditor.getString(SharedPreferencesEditor.STATUS, STATUS_INACTIVE);
+
+
+    public void manageActivityStatus(){
+        //Connecting to DB
+        final AppDatabase db = AppDatabase.getInstance(this);
+        String status = db.getApplicationStatus();
         switch (status){
-            case STATUS_INACTIVE:
-                status = "PENDING";
-                updateStatus();
-                if(!isMyServiceRunning(BrewingService.class)){
-                    startBrewingService(false, false, true);
-                }
-                break;
-            case "PENDING":
-                status = STATUS_ACTIVE;
-                updateStatus();
-                if(!isMyServiceRunning(BrewingService.class)){
-                    startBrewingService(true, false, true);
-                }
-                break;
-            case "STEP FINISHED":
-                status = "PENDING";
-                brewingStepsAdapter.nextStep();
-                if(brewingStepsAdapter.hasNextStep()){
-                    nextStepLabel.setVisibility(View.INVISIBLE);
-                }
-                updateStatus();
-                this.stopService(brewingServiceIntent);
-                break;
-            case "PROCESS FINISHED":
-                Intent intent = new Intent(this, MainMenuActivity.class);
-                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
-                this.finish();
-                break;
-            case STATUS_WARNING:
-                status = STATUS_ACTIVE;
-                updateStatus();
-                startBrewingService(true, true, false);
+            case Dictionary.STATUS_PENDING:
+                //resetting timer
+                updateTimer(-1);
+                //starting brewing service
+                startBrewingService();
                 break;
         }
-
-        brewingSharedPreferencesEditor.putString("STATUS", status);
-        brewingStepsAdapter.updateSteps();
-
-    }
+        updateView();
 
 
-
-
-    public void updateStatus(){
-
-        String statusText;
-        String statusHint;
-        String buttonText;
-
-        String status = brewingSharedPreferencesEditor.getString(SharedPreferencesEditor.STATUS, STATUS_INACTIVE);
-        switch (status){
-            case STATUS_INACTIVE:
-                statusText = "Waiting for process to start";
-                statusHint = "When you are ready please click on 'Start' button to begin";
-                buttonText = "Start";
-                break;
-            case "PENDING":
-                brewingSharedPreferencesEditor.putInt(SharedPreferencesEditor.TIME_REMAIN, -1);
-                statusText = ("Waiting for reaching correct temperature");
-                if(deviceResponse.equals("Disconnected")){
-                    statusHint = "Your device seems to be disconnected. Start the timer by clicking 'Start Timer' button, when  you are ready to start the timer";
-                }
-                else{
-                    statusHint = "You will receive the notification and timer will start automatically when your wort reaches desired temperature. You can also start the timer by clicking on 'Start Timer' button";
-                }
-                buttonText = "Start Timer";
-                updateCurrentStepCard();
-                updateTimerCard(-1);
-                break;
-            case STATUS_ACTIVE:
-                statusText =  "Brewing in " + brewingStepsAdapter.getCurrentStepTemperature() + "\u2103 for " + brewingStepsAdapter.getCurrentStepTime() + " min";
-                statusHint = "...";
-                buttonText = "Cancel Process";
-                int timeRemain = brewingSharedPreferencesEditor.getInt("TIME_REMAIN", -1);
-                if(timeRemain == 0){
-                    if(brewingStepsAdapter.nextStep()){
-                        updateTimerCard(timeRemain);
-                        status = "STEP FINISHED";
-                        brewingSharedPreferencesEditor.getString(SharedPreferencesEditor.STATUS, status);
-                        updateStatus();
-                    }
-                }
-                break;
-            case "STEP FINISHED":
-                statusText = "Step finished!";
-                statusHint = "Click on 'Next Step' button to continue";
-                buttonText = "Next Step";
-                break;
-            case "PROCESS FINISHED":
-                statusText = "FINISHED!";
-                statusHint = "Your brewing process is complete. Click oin 'Finish' button to return to main menu";
-                buttonText = "Finish";
-                break;
-            default:
-                statusText = "Error!";
-                statusHint = "Something went wrong";
-                buttonText = "X";
-            case STATUS_WARNING:
-                statusText =  "Brewing in " + brewingStepsAdapter.getCurrentStepTemperature() + "\u2103 for " + brewingStepsAdapter.getCurrentStepTime() + " min";
-                statusHint = "Your wort requires your attention";
-                buttonText = "Dismiss Alarm";
-                int remainingTime = brewingSharedPreferencesEditor.getInt("TIME_REMAIN", -1);
-                if(remainingTime == 0){
-                    if(brewingStepsAdapter.nextStep()){
-                        updateTimerCard(remainingTime);
-                        status = "STEP FINISHED";
-                        brewingSharedPreferencesEditor.getString(SharedPreferencesEditor.STATUS, status);
-                        updateStatus();
-                    }
-                }
-                break;
-
-        }
-
-        updateStatusCard(statusText, statusHint);
-        updateButton(buttonText);
     }
 
 
     //---------------------UI UPDATING------------------------
-    public void updateStatusCard(String statusText, String statusHintText){
-        statusTV.setText(statusText);
-        statusHintTV.setText(statusHintText);
+
+    private void updateView(){
+        final AppDatabase db = AppDatabase.getInstance(getApplicationContext());
+        String status = db.getApplicationStatus();
+        switch (status){
+            case Dictionary.STATUS_PENDING:
+                updateView_Pending();
+                break;
+            case Dictionary.STATUS_RUNNING:
+                updateView_Running();
+        }
     }
 
-    public void updateButton(String text){
-//        actionButton.setText(text);
-    }
-
-    public void updateCurrentStepCard(){
+    /**
+     * Updating view to Pending Status
+     */
+    @SuppressLint("SetTextI18n")
+    private void updateView_Pending(){
+        //Setting up Information Section
+        statusTV.setText(getResources().getString(R.string.BA_WaitingForTemperature));
+        if(deviceResponse.equals(MeasureThread.DISCONNECTED)){
+            statusHintTV.setText(getResources().getString(R.string.BA_DeviceDisconnected));
+        }
+        else{
+            statusHintTV.setText(getResources().getString(R.string.BA_WaitingForTemperatureHint));
+        }
+        //Setting up current step section
         currentStepTempTV.setText(brewingStepsAdapter.getCurrentStepTemperature() + "\u2103");
         currentStepTimeTv.setText(brewingStepsAdapter.getCurrentStepTime() + " min");
     }
 
+    /**
+     * Updating view to Running Status
+     */
+    private void updateView_Running(){
+        statusTV.setText(getResources().getString(R.string.BA_BrewingInProgress));
+        statusHintTV.setText(getResources().getString(R.string.BA_BrewingInProgressHint));
+    }
+
+
+
+
+//    public void updateStatusCard(String statusText, String statusHintText){
+//        statusTV.setText(statusText);
+//        statusHintTV.setText(statusHintText);
+//    }
+
+
+    /**
+     * Setting timer value and progress bar
+     * @param timeRemain - remaining time (max. time is a time from current brewing step)
+     *                   -1 => setting timeRemain to be equal to max.
+     */
     @SuppressLint("SetTextI18n")
-    public void updateTimerCard(int timeRemain){
+    public void updateTimer(int timeRemain){
         int currentStepTime = brewingStepsAdapter.getCurrentStepTime()*60;
         //if 0 i passed as timeRamain get default step time
         if(timeRemain == -1){
@@ -341,39 +293,6 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
         timeProgressBar.setProgress(timeRemain);
     }
 
-    //-----------------------------------------------------
-
-    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String updateValue = intent.getStringExtra("UPDATE_VALUE");
-            if(updateValue != null){
-                if(updateValue.equals("START")){
-                    brewingSharedPreferencesEditor.putString(SharedPreferencesEditor.STATUS, STATUS_ACTIVE);
-                    updateStatus();
-                }
-                else if(updateValue.equals(STATUS_WARNING)){
-                    brewingSharedPreferencesEditor.putString(SharedPreferencesEditor.STATUS, STATUS_WARNING);
-                    updateStatus();
-                }
-            }
-
-            int timeRemain = brewingSharedPreferencesEditor.getInt("TIME_REMAIN", -1);
-            updateTimerCard(timeRemain);
-            if(timeRemain == 0){
-                if(brewingStepsAdapter.hasNextStep()){
-                    String statusToUpdate = "STEP FINISHED";
-                    brewingSharedPreferencesEditor.putString(SharedPreferencesEditor.STATUS, statusToUpdate);
-                    updateStatus();
-                }
-                else{
-                    String statusToUpdate = "STEP FINISHED";
-                    brewingSharedPreferencesEditor.putString(SharedPreferencesEditor.STATUS, statusToUpdate);
-                    updateStatus();
-                }
-            }
-        }
-    };
 
 
     private boolean isMyServiceRunning(Class<?> serviceClass) {
@@ -386,25 +305,40 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
         return false;
     }
 
+    /**
+     * Resetting brewing steps adapter to show all brewing steps
+     * Setting current step to take next one in queue (1st)
+     * Updating timer to be equal to current brewing step
+     * Updating view to match current application status
+     * Stopping brewingService if running
+     */
+    @SuppressLint("SetTextI18n")
     public void callDefaultSettings(){
-        brewingSharedPreferencesEditor.putInt(SharedPreferencesEditor.CURRENT_STEP, 0);
-        brewingSharedPreferencesEditor.putString(SharedPreferencesEditor.STATUS, STATUS_INACTIVE);
+        //Resetting next steps section
         brewingStepsAdapter.reset();
-        updateCurrentStepCard();
-        updateTimerCard(-1);
-        updateStatus();
+        //Setting current step details
+        currentStepTempTV.setText(brewingStepsAdapter.getCurrentStepTemperature() + "\u2103");
+        currentStepTimeTv.setText(brewingStepsAdapter.getCurrentStepTime() + " min");
+        //Resetting timer
+        updateTimer(-1);
+        //Load settings for current status and stp BrewingService if running
+        manageActivityStatus();
         if(isMyServiceRunning(BrewingService.class)){
             stopService(brewingServiceIntent);
         }
     }
 
+    /**
+     * Enabling Temperature Color Bar
+     * @param barToShow
+     *  COLOR_BAR_DARK_BLUE
+     *  COLOR_BAR_LIGHT_BLUE
+     *  COLOR_BAR_GREEN
+     *  COLOR_BAR_ORANGE
+     *  COLOR_BAR_RED
+     */
     public void setProgressOnColorBar(int barToShow){
-        //0 - none
-        //1 - dark blue
-        //2 - light blue
-        //3 - green
-        //4 - orange
-        //5 = red
+
         blueBar.setVisibility(View.INVISIBLE);
         lightBlueBar.setVisibility(View.INVISIBLE);
         greenBar.setVisibility(View.INVISIBLE);
@@ -412,35 +346,79 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
         redBar.setVisibility(View.INVISIBLE);
 
         switch (barToShow){
-            case 1:
+            case COLOR_BAR_DARK_BLUE:
                 blueBar.setVisibility(View.VISIBLE);
                 break;
-            case 2:
+            case COLOR_BAR_LIGHT_BLUE:
                 lightBlueBar.setVisibility(View.VISIBLE);
                 break;
-            case 3:
+            case COLOR_BAR_GREEN:
                 greenBar.setVisibility(View.VISIBLE);
                 break;
-            case 4:
+            case COLOR_BAR_ORANGE:
                 orangeBar.setVisibility(View.VISIBLE);
                 break;
-            case 5:
+            case COLOR_BAR_RED:
                 redBar.setVisibility(View.VISIBLE);
                 break;
         }
     }
 
 
-    public void startBrewingService(boolean forcedStart, boolean alarmDismissed, boolean newProcess){
-        if(isMyServiceRunning(BrewingService.class)){
-            this.stopService(brewingServiceIntent);
+    public void startBrewingService(){
+        if(!isMyServiceRunning(BrewingService.class)){
+            Log.v("DEBUG:", "Calling startBrewingService()");
+            brewingServiceIntent.putExtra(BrewingService.TIME, brewingStepsAdapter.getCurrentStepTime());
+            brewingServiceIntent.putExtra(BrewingService.TEMP,  brewingStepsAdapter.getCurrentStepTemperature());
+            this.startService(brewingServiceIntent);
         }
-        brewingServiceIntent.putExtra("TIME", brewingStepsAdapter.getCurrentStepTime());
-        brewingServiceIntent.putExtra("TEMP",  brewingStepsAdapter.getCurrentStepTemperature());
-        brewingServiceIntent.putExtra("FORCE_TIMER",  forcedStart);
-        brewingServiceIntent.putExtra("ALARM_DISMISSED",  alarmDismissed);
-        brewingServiceIntent.putExtra("NEW_PROCESS",  newProcess);
-        this.startService(brewingServiceIntent);
     }
+
+
+    /**
+     * On receive broadcast from brewingService
+     */
+    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            //Connect do DB
+            final AppDatabase db = AppDatabase.getInstance(getApplicationContext());
+            //Get UPDATE_VALUE from broadcast and process it
+            String updateValue = intent.getStringExtra(BrewingService.BROADCAST_UPDATE_VALUE);
+            if(updateValue != null){
+                if(updateValue.equals(BrewingService.BROADCAST_STARTED)){
+                    db.setApplicationStatus(Dictionary.STATUS_RUNNING);
+                    manageActivityStatus();
+                }
+                else if(updateValue.equals("STATUS_WARNING")){
+                    brewingSharedPreferencesEditor.putString(SharedPreferencesEditor.STATUS, "STATUS_WARNING");
+                    manageActivityStatus();
+                }
+            }
+            SharedPreferencesEditor brewingSharedPreferencesEditor = new SharedPreferencesEditor(getSharedPreferences("BREWING_SETTINGS", Context.MODE_PRIVATE));
+            int timeRemain = brewingSharedPreferencesEditor.getInt("TIME_REMAIN", -1);
+            updateTimer(timeRemain);
+            if(timeRemain == 0){
+                if(brewingStepsAdapter.hasNextStep()){
+                    String statusToUpdate = "STEP FINISHED";
+                    brewingSharedPreferencesEditor.putString(SharedPreferencesEditor.STATUS, statusToUpdate);
+                    manageActivityStatus();
+                }
+                else{
+                    String statusToUpdate = "STEP FINISHED";
+                    brewingSharedPreferencesEditor.putString(SharedPreferencesEditor.STATUS, statusToUpdate);
+                    manageActivityStatus();
+                }
+            }
+
+            //get BROADCAST_TIMER_VALUE from broadcast and process it
+            int timeLeft = intent.getIntExtra(BrewingService.BROADCAST_TIMER_VALUE, -1);
+            if(timeLeft != -1){
+                updateTimer(timeLeft);
+            }
+
+        }
+    };
+
 
 }

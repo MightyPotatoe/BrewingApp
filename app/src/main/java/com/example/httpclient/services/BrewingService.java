@@ -27,7 +27,14 @@ import com.example.httpclient.nototifications.MyNotificationBuilder;
 
 public class BrewingService extends Service implements Observer{
 
-    //Media Plater
+    public static final String TIME = "TIME";
+    public static final String TEMP = "TEMP";
+    public static final String ALARM_DISMISSED = "TIME";
+    public static final String NEW_PROCESS = "TIME";
+
+    public static final String BROADCAST_STARTED = "START";
+
+    //Media Player
     private MediaPlayer player = new MediaPlayer();
     //MeasureThread
     MeasureThread measureThread;
@@ -50,7 +57,7 @@ public class BrewingService extends Service implements Observer{
 
     public static String TIMER_ACTION = "TIMER_ACTION";
     public static String BROADCAST_TIMER_VALUE = "TIMER_VALUE";
-    public static String BROADCAST_UPDATE_VALUE = "UPDATE_VALUE";
+    public static String BROADCAST_UPDATE_VALUE = "UPDATE_MESSAGE";
 
     @Nullable
     @Override
@@ -71,25 +78,19 @@ public class BrewingService extends Service implements Observer{
         //Initializing MediaPlayer
         player = MediaPlayer.create(this, R.raw.alarm);
         player.setLooping(true);
-        Toast.makeText(this, "Created", Toast.LENGTH_LONG).show();
+        Log.v("DEBUG:", "Brewing service created");
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.v("DEBUG:", "Brewing service started");
         //Getting data passed by INTENT
-        desiredTemp = intent.getIntExtra("TEMP", 0);
-        boolean forcedStart = intent.getBooleanExtra("FORCE_TIMER", false);
-        int currentStepTime = intent.getIntExtra("TIME", 0);
-        tempMismatchNotificationSend = intent.getBooleanExtra("ALARM_DISMISSED", false);
-        newProcess = intent.getBooleanExtra("NEW_PROCESS", true);
+        desiredTemp = intent.getIntExtra(TEMP, 0);
+        int currentStepTime = intent.getIntExtra(TIME, 0);
+        tempMismatchNotificationSend = intent.getBooleanExtra(ALARM_DISMISSED, false);
 
         //Creating countdown Timer
-        initializeCountDownTimer(currentStepTime, forcedStart);
-
-        //Forcing timer to start if needed
-        if(forcedStart){
-            countDownTimer.start();
-        }
+        initializeCountDownTimer(currentStepTime);
 
         return START_STICKY;
     }
@@ -112,12 +113,16 @@ public class BrewingService extends Service implements Observer{
             buildNotification("Process Finished!", "Your brewing step is complete");
     }
 
+    /**
+     * On measure received.
+     * @param param - received measure
+     */
     //--------On Measure Received------------------
     @Override
     public void update(String param) {
         Log.v("TAG","Counter: " + temperatureMismatchCounter);
         //If timer is working and device is disconnected
-        if(timerWorking && (param.equals("Disconnected") || param.isEmpty())){
+        if(timerWorking && (param.equals(MeasureThread.DISCONNECTED) || param.isEmpty())){
             //If notification wasn't previously send
             if(!disconnectedNotificationSend){
                 //Sending one-time notification
@@ -126,7 +131,7 @@ public class BrewingService extends Service implements Observer{
             }
         }
         else{ //    <-- if device is connected
-            //Allow for sending notification ig connection is lost
+            //Allow for sending notification eg. connection is lost
             disconnectedNotificationSend = false;
             //Parsing double form String
             double currentTemp = MyParser.parseDouble(param);
@@ -171,15 +176,23 @@ public class BrewingService extends Service implements Observer{
         }
     }
 
+    /**
+     * check if temperature is +- 2C from desired temp.
+     * If 10 measures in row are within the range of desired temperature
+     * startTimer and send broadcast informing about status change.
+     * @param currentTemp
+     */
     public void waitForTimerToStart(double currentTemp){
-        //If temp is +-2C from target
+        //check if temperature is +- 2C from desired temp.
         if(Math.abs(desiredTemp - currentTemp) < 2){
             if(correctTempCounter <= 10){
                 correctTempCounter++;
             }
+            //If 10 measures in row are within the range of desired temperature
+            //startTimer and send broadcast informing about status change.
             else{
                 startTimer();
-                sendBroadcast(BROADCAST_UPDATE_VALUE, "START");
+                sendBroadcast(BROADCAST_UPDATE_VALUE, BROADCAST_STARTED);
                 correctTempCounter = 0;
             }
         }
@@ -187,6 +200,7 @@ public class BrewingService extends Service implements Observer{
         else {
             correctTempCounter = 0;
         }
+        Log.v("CORRECT_MEASURE_COUNTER", " " + correctTempCounter);
     }
 
     //----------------------------------------NOTIFICATIONS--------------------------------------------
@@ -230,17 +244,15 @@ public class BrewingService extends Service implements Observer{
 
     //----------------COUNTDOWN TIMER-----------------------------------------------
     //---Definition
-    public void initializeCountDownTimer(int currentStepTime, boolean forcedStart){
+    public void initializeCountDownTimer(int currentStepTime){
+        Log.v("DEBUG:", "Initializing countdown timer");
         int timerValue = currentStepTime*60*1000;
-        if(forcedStart && !newProcess){
-            timerValue = brewingSharedPreferences.getInt(SharedPreferencesEditor.TIME_REMAIN, 0)*1000;
-        }
+        //Creating countdownTimer
         countDownTimer = new CountDownTimer(timerValue, 1000) {
             public void onTick(long millisUntilFinished) {
                 int secondsToFinish = (int) millisUntilFinished / 1000;
                 onTimerTick(secondsToFinish);
             }
-
             public void onFinish() {
                 onFinishMethod();
             }
@@ -248,14 +260,13 @@ public class BrewingService extends Service implements Observer{
     }
     //----Starting timer
     public void startTimer(){
+        Log.v("DEBUG:", "Starting counter");
         countDownTimer.start();
         timerWorking = true;
     }
 
     //---OnTimerTickMethod
     public void onTimerTick(int timeLeft) {
-        //Updating time remain
-        brewingSharedPreferences.putInt(SharedPreferencesEditor.TIME_REMAIN, timeLeft);
         //Sending broadcast
         sendBroadcast(BROADCAST_TIMER_VALUE, timeLeft);
     }

@@ -14,6 +14,8 @@ import java.util.Set;
 
 public class MeasureThread extends Thread implements HTTPController.OnHttpResponseListener, Observable {
 
+    public static final String DISCONNECTED = "Disconnected";
+
     private HTTPController httpController;
     private String tempNow = "-";
     private Set<Observer> observers = new HashSet<>();
@@ -54,7 +56,7 @@ public class MeasureThread extends Thread implements HTTPController.OnHttpRespon
     @Override
     public void onResponseReceived(String response){
         if(response.contains("Cannot access the Device")){
-            tempNow = "Disconnected";
+            tempNow = DISCONNECTED;
         }
         else{
             tempNow = response.substring(0,4) + "\u00B0C";

@@ -12,10 +12,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 
-@Database(entities = {LastUsedBrewingSteps.class},  version = 1)
+@Database(entities = {LastUsedBrewingSteps.class, AppConfig.class},  version = 2)
 public abstract class AppDatabase extends RoomDatabase {
+
     private static AppDatabase INSTANCE;
     public abstract LastUsedBrewingStepsDao lastUsedBrewingStepsDao();
+    public abstract AppConfigDao appConfigDao();
 
     public synchronized static AppDatabase getInstance(Context context) {
         if (INSTANCE == null) {
@@ -26,6 +28,7 @@ public abstract class AppDatabase extends RoomDatabase {
             @Override
             public void run() {
                 INSTANCE.lastUsedBrewingStepsDao().fakeRead();
+                INSTANCE.appConfigDao().fakeRead();
             }
         });
         return INSTANCE;
@@ -34,7 +37,7 @@ public abstract class AppDatabase extends RoomDatabase {
     private static AppDatabase buildDatabase(final Context context) {
         return Room.databaseBuilder(context,
                 AppDatabase.class,
-                "day_planner_db")
+                "brew_it_db")
                 .allowMainThreadQueries()
                 .addCallback(new RoomDatabase.Callback() {
                     @Override
@@ -47,6 +50,7 @@ public abstract class AppDatabase extends RoomDatabase {
                         });
                     }
                 })
+                .fallbackToDestructiveMigration()
                 .build();
     }
 
@@ -74,6 +78,38 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public List<Integer> getAllStepsTimes(){
         return lastUsedBrewingStepsDao().selectAllBrewingStepsTimes();
+    }
+
+    /**
+     * Get application status
+     * If there is no status stored in db return "PENDING" status
+     */
+    public String getApplicationStatus(){
+        String status = appConfigDao().getParameterValue(AppConfig.STATUS);
+        if(status == null){
+            return "PENDING";
+        }
+        return status;
+    }
+
+    /**
+     * Set application status
+     * If there is no status stored in db return "PENDING" status
+     */
+    public void setApplicationStatus(String status){
+        appConfigDao().update(new AppConfig(AppConfig.STATUS, status));
+    }
+
+    /**
+     * Get current brewing step
+     * If there is no current step in db return 0
+     */
+    public int getCurrentBrewingStep(){
+        String currentStep = appConfigDao().getParameterValue(AppConfig.CURRENT_STEP);
+        if(currentStep == null){
+            return 0;
+        }
+        return Integer.parseInt(currentStep);
     }
 
 }

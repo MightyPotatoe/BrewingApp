@@ -8,8 +8,6 @@ public class SharedPreferencesEditor {
     SharedPreferences sharedPreferences;
 
     public static final String STATUS = "STATUS";
-    public static final String CURRENT_STEP = "CURRENT_STEP";
-    public static final String TIME_REMAIN = "TIME_REMAIN";
 
     public SharedPreferencesEditor(SharedPreferences sharedPreferences) {
         this.sharedPreferences = sharedPreferences;

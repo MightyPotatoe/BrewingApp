@@ -9,17 +9,19 @@ import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.httpclient.DataBase.AppDatabase;
 import com.example.httpclient.R;
 import com.example.httpclient.Utilities.SharedPreferencesEditor;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class BrewingStepsAdapter extends RecyclerView.Adapter<BrewingStepsAdapter.ViewHolder>  {
 
     private LayoutInflater mInflater;
 
-    private ArrayList<Integer> originalDesiredTemp;
-    private ArrayList<Integer> originalTimeForStep;
+    private final ArrayList<Integer> originalDesiredTemp;
+    private final ArrayList<Integer> originalTimeForStep;
     private ArrayList<Integer> desiredTemp;
     private ArrayList<Integer> timeForStep;
 
@@ -30,24 +32,16 @@ public class BrewingStepsAdapter extends RecyclerView.Adapter<BrewingStepsAdapte
 
 
     // data is passed into the constructor
-    public BrewingStepsAdapter(Context context, SharedPreferencesEditor sharedPreferences) {
+    public BrewingStepsAdapter(Context context) {
         this.mInflater = LayoutInflater.from(context);
-        this.sharedPreferencesEditor = sharedPreferences;
 
         //Initializing RecyclerView with previous brewing steps
-        ArrayList<Integer> tempList = new ArrayList<>();
-        ArrayList<Integer> timeList = new ArrayList<>();
-        for(int i = 0; i<5; i++){
-            int temp = sharedPreferences.getInt("Temp"+i, 0);
-            int time = sharedPreferences.getInt("Time"+i, 0);
-            if(temp!=0 && time !=0){
-                tempList.add(temp);
-                timeList.add(time);
-            }
-        }
-        originalDesiredTemp = desiredTemp = tempList;
-        originalTimeForStep = timeForStep = timeList;
-        currentStep = sharedPreferences.getInt("CURRENT_STEP", 0);
+        final AppDatabase db = AppDatabase.getInstance(context);
+        List<Integer> tempList =  db.getAllStepsTemps();
+        List<Integer> timeList = db.getAllStepsTimes();
+        originalDesiredTemp = desiredTemp = new ArrayList<>(tempList);
+        originalTimeForStep = timeForStep = new ArrayList<>(timeList);
+        currentStep = db.getCurrentBrewingStep();
         if(currentStep < 0){
             currentStep = 0;
         }
@@ -112,7 +106,6 @@ public class BrewingStepsAdapter extends RecyclerView.Adapter<BrewingStepsAdapte
     public boolean nextStep(){
         if(hasNextStep()){
             currentStep++;
-            sharedPreferencesEditor.putInt(SharedPreferencesEditor.CURRENT_STEP, currentStep);
             return true;
         }
         return false;

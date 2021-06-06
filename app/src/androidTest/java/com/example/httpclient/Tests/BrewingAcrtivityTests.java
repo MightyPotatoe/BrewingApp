@@ -16,6 +16,7 @@ import androidx.test.rule.ActivityTestRule;
 import com.example.httpclient.Activities.BrewingActivity;
 import com.example.httpclient.Activities.MainMenuActivity;
 import com.example.httpclient.R;
+import com.example.httpclient.Threads.MeasureThread;
 import com.example.httpclient.Utilities.SharedPreferencesEditor;
 import com.google.android.material.progressindicator.CircularProgressIndicator;
 
@@ -64,8 +65,6 @@ public class BrewingAcrtivityTests {
         int max = CircularProgressBarUtils.getMax(withId(R.id.progressIndicator));
         Assert.assertEquals(progress, max);
     }
-
-
 
 
 }
