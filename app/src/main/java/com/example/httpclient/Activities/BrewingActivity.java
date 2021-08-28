@@ -1,5 +1,6 @@
 package com.example.httpclient.Activities;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -15,12 +16,14 @@ import android.os.Bundle;
 import android.os.PowerManager;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.example.httpclient.Adapters.BrewingStepsAdapter;
 import com.example.httpclient.DataBase.AppDatabase;
 import com.example.httpclient.DataBase.Dictionary;
+import com.example.httpclient.Dialogs.StopBrewingDialog;
 import com.example.httpclient.Observer.Observer;
 import com.example.httpclient.R;
 import com.example.httpclient.Threads.MeasureThread;
@@ -73,6 +76,7 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_brewing);
 
         final AppDatabase db = AppDatabase.getInstance(this);
@@ -102,6 +106,7 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
         //Temperature section
         blueBar = findViewById(R.id.blueBar);
         lightBlueBar = findViewById(R.id.lightBlueBar);
+
         greenBar = findViewById(R.id.greenbar);
         orangeBar = findViewById(R.id.orangeBar);
         redBar = findViewById(R.id.redBar);
@@ -138,6 +143,15 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
 
         //Calling default settings
         callDefaultSettings();
+
+        OnBackPressedCallback callback = new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                StopBrewingDialog dialog = new StopBrewingDialog();
+                dialog.show(getSupportFragmentManager(), "Confirmation");
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, callback);
     }
 
 //    @Override
@@ -157,7 +171,7 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        callDefaultSettings();
+        stopService(brewingServiceIntent);
         wakeLock.release();
     }
 
@@ -216,7 +230,9 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
                 //resetting timer
                 updateTimer(-1);
                 //starting brewing service
-                startBrewingService();
+                if(!isMyServiceRunning(BrewingService.class)){
+                    startBrewingService();
+                }
                 break;
         }
         updateView();
@@ -321,11 +337,8 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
         currentStepTimeTv.setText(brewingStepsAdapter.getCurrentStepTime() + " min");
         //Resetting timer
         updateTimer(-1);
-        //Load settings for current status and stp BrewingService if running
+        //Load settings for current status and stop BrewingService if running
         manageActivityStatus();
-        if(isMyServiceRunning(BrewingService.class)){
-            stopService(brewingServiceIntent);
-        }
     }
 
     /**
@@ -419,6 +432,5 @@ public class BrewingActivity extends AppCompatActivity implements Observer {
 
         }
     };
-
 
 }
